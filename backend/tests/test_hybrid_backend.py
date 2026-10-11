@@ -119,3 +119,43 @@ def test_cors_adds_only_explicit_https_origins(monkeypatch):
     monkeypatch.setenv('LEAFLENS_CORS_ORIGINS', 'http://attacker.example.org')
     with pytest.raises(RuntimeError, match='HTTPS'):
         app.configured_cors_origins()
+
+
+def test_cloud_iot_returns_offline_without_database(monkeypatch):
+    import cloud_iot
+    from fastapi.testclient import TestClient
+    import app
+    monkeypatch.setattr(cloud_iot, 'is_configured', lambda: False)
+    import os
+    # Do not touch production databases during offline unit tests.
+    assert not cloud_iot.is_configured()
+    # Test direct endpoint method, rather than the local-mode app router.
+    import asyncio
+    result = asyncio.run(cloud_iot.current_reading())
+    assert result['online'] is False
+    assert result['temperature_c'] is None
+
+
+def test_cloud_iot_fresh_reading(monkeypatch):
+    import asyncio
+    import cloud_iot
+    from datetime import datetime, timezone
+    monkeypatch.setenv('SUPABASE_URL', 'https://demo.supabase.co')
+    monkeypatch.setenv('SUPABASE_SERVICE_ROLE_KEY', 'test-secret')
+    class FakeResponse:
+        def raise_for_status(self): pass
+        def json(self):
+            return [{'temperature_c': 26.1, 'humidity_percent': 61.2,
+                     'updated_at': datetime.now(timezone.utc).isoformat()}]
+    class FakeClient:
+        def __init__(self, **kwargs): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *_): pass
+        async def get(self, url, headers, params):
+            assert url.endswith('/rest/v1/leaflens_iot_latest')
+            assert params['device_id'] == 'eq.leaflens-demo'
+            return FakeResponse()
+    monkeypatch.setattr(cloud_iot.httpx, 'AsyncClient', FakeClient)
+    result = asyncio.run(cloud_iot.current_reading())
+    assert result['online'] is True
+    assert result['temperature_c'] == 26.1
