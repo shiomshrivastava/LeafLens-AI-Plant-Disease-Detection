@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Camera, CameraOff, CircleAlert, X } from 'lucide-react';
+import { Camera, CircleAlert, X } from 'lucide-react';
 import { t } from './i18n';
 import type { Language } from './i18n';
 
