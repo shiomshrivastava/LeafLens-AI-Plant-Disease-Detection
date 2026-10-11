@@ -1,8 +1,6 @@
 """Offline unit tests; no network requests or real user modifications."""
 import asyncio
-import importlib
 import sys
-import types
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -12,14 +10,8 @@ from fastapi import HTTPException
 HERE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(HERE))
 
-# Isolate admin module from full AI setup for offline tests.
-if 'history_store' not in sys.modules:
-    history_stub = types.ModuleType('history_store')
-    async def verified_user(_auth):
-        return '00000000-0000-4000-8000-000000000001'
-    history_stub.verified_user = verified_user
-    sys.modules['history_store'] = history_stub
-
+# Import the real lightweight history module; injecting a stub into sys.modules
+# breaks collection of other offline API tests in the same pytest session.
 import admin_api as a
 ADMIN = '00000000-0000-4000-8000-000000000001'
 TARGET = '00000000-0000-4000-8000-000000000002'
@@ -49,10 +41,15 @@ def test_active_check_denies_banned(monkeypatch):
 
 
 def test_non_admin_denied(monkeypatch):
+    async def verified(_auth):
+        return ADMIN
     async def permitted(_uid):
         return False
     async def active(_uid):
         return None
+    # Stub only the authentication boundary for this test, not the global
+    # history_store module. This remains fully offline and reaches the 403 check.
+    monkeypatch.setattr(a, 'verified_user', verified)
     monkeypatch.setattr(a, '_is_admin', permitted)
     monkeypatch.setattr(a, 'require_active_account', active)
     with pytest.raises(HTTPException) as err:

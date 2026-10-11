@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, DragEvent, FormEvent } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import {
-  ArrowLeft, ArrowRight, Check, CheckCircle2, ChevronDown, CircleAlert, ClipboardList,
+  ArrowLeft, ArrowRight, CheckCircle2, ChevronDown, CircleAlert, ClipboardList,
   Eye, EyeOff, FileImage, House, ImagePlus, Leaf, LockKeyhole, LogOut,
   Mail, Menu, PanelLeftClose, PanelLeftOpen, Save, ScanSearch, Settings, ShieldCheck, Sprout, Trash2, UploadCloud, BookOpen, Languages,
   UserRound, X, CloudSun, Shield,
@@ -15,7 +15,6 @@ import { SensorPanel } from './SensorPanel';
 import { AdminDashboard } from './AdminDashboard';
 import { adminText } from './adminI18n';
 import { CropsLibrary } from './CropsLibrary';
-import { QualityGuidance } from './QualityGuidance';
 import { t, languageKey, loadLanguage } from './i18n';
 import type { Language } from './i18n';
 
@@ -575,7 +574,7 @@ function Dashboard({ user, onLogout, authError, language, onLanguage }: { user: 
     <div className="dashboard-main">
       <header className="dashboard-toolbar"><div className="toolbar-left"><button type="button" className="sidebar-toggle" onClick={toggleSidebar} aria-label={sidebarClosed ? 'Expand sidebar' : 'Collapse sidebar'} title={sidebarClosed ? 'Expand sidebar' : 'Collapse sidebar'}>{sidebarClosed ? <PanelLeftOpen size={22} /> : <PanelLeftClose size={22} />}</button><div className="toolbar-breadcrumb"><span>LeafLens</span><span className="breadcrumb-sep">/</span><span>{t(language, page === 'results' ? 'Analysis Results' : page === 'analyses' ? 'My Analyses' : page === 'crops' ? 'Supported Crops' : page === 'weather' ? 'Weather' : page === 'profile' ? 'Profile' : page === 'settings' ? 'Settings' : page === 'admin' ? 'Admin Dashboard' : 'Home')}</span></div></div><div className="toolbar-right"><LanguageToggle language={language} onLanguage={onLanguage} /><button className="toolbar-account" type="button" onClick={() => changePage('profile')} aria-label="Go to your profile"><span className="account-avatar">{avatarUrl ? <img src={avatarUrl} alt="" /> : name[0]?.toUpperCase() || 'U'}</span><span>{name}</span><ChevronDown size={18} /></button><button type="button" className="toolbar-signout" onClick={() => void onLogout()} title="Sign out" aria-label="Sign out of LeafLens"><LogOut size={18} /><span>{adminText(language, "Sign out")}</span></button></div></header>
       {authError && <p className="auth-notice error" role="alert">{authError}</p>}
-      {page === 'admin' && adminStatus === 'admin' && <AdminDashboard ownUserId={user.id} onBack={() => changePage('home')} />}
+      {page === 'admin' && adminStatus === 'admin' && <AdminDashboard ownUserId={user.id} language={language} onBack={() => changePage('home')} />}
       {page === 'home' && <div className="home-page">
         <div className="page-heading home-title"><h1>{language === 'hi' ? 'नमस्ते' : 'Welcome'}, {name} <span className="wave">👋</span></h1><p>{t(language, 'Upload a leaf image to analyze plant health using AI.')}</p></div>
         <div className="home-grid">
@@ -603,7 +602,7 @@ function Dashboard({ user, onLogout, authError, language, onLanguage }: { user: 
         {historyError && <div className="auth-notice error" role="alert">{historyError} <button type="button" className="link-button" onClick={() => void loadHistory()}>Retry</button></div>}
         {historyLoading && <p className="history-loading"><span className="spinner mini" /> {t(language, 'Loading saved analyses…')}</p>}
         <div className="card analyses-list">{history.length ? history.map(entry => <div className="history-row" key={entry.id}>
-          <button className="history-entry" onClick={() => { setActiveId(entry.id); changePage('results'); }}><img src={entry.imageUrl} alt="Uploaded leaf" /><span><strong>{entry.report.model0c?.predicted_crop || 'Leaf analysis'} · {entry.report.model2?.disease || entry.report.model1?.status || entry.report.decision.replaceAll('_', ' ')}</strong><small>{entry.fileName} · {new Date(entry.date).toLocaleString()}</small>{entry.report.recommendations && <small className="history-care-preview"><Sprout size={13} />{language === 'hi' ? entry.report.recommendations.title_hi : entry.report.recommendations.title_en}: {(language === 'hi' ? entry.report.recommendations.tips_hi : entry.report.recommendations.tips_en)[0]}</small>}</span><ArrowRight size={18} /></button>
+          <button className="history-entry" onClick={() => { setActiveId(entry.id); changePage('results'); }}><img src={entry.imageUrl} alt="Uploaded leaf" /><span><strong>{entry.report.model0c?.predicted_crop || 'Leaf analysis'} · {entry.report.model2?.disease || entry.report.model1?.status || entry.report.decision.replace(/_/g, ' ')}</strong><small>{entry.fileName} · {new Date(entry.date).toLocaleString()}</small>{entry.report.recommendations && <small className="history-care-preview"><Sprout size={13} />{language === 'hi' ? entry.report.recommendations.title_hi : entry.report.recommendations.title_en}: {(language === 'hi' ? entry.report.recommendations.tips_hi : entry.report.recommendations.tips_en)[0]}</small>}</span><ArrowRight size={18} /></button>
           <button type="button" className="history-trash" aria-label={`Delete ${entry.fileName}`} title="Delete this analysis" disabled={historyBusy} onClick={() => void deleteOne(entry)}><Trash2 size={19} /></button>
         </div>) : !historyLoading && !historyError ? <div className="empty-history"><ClipboardList size={32} /><h2>{t(language, 'No saved analyses yet')}</h2><p>{t(language, 'Analyze a leaf to save your first result here.')}</p><button className="primary-action" onClick={() => changePage('home')}>{t(language, 'Analyze a leaf')} <ArrowRight size={16} /></button></div> : null}</div>
         <p className="small-note">{t(language, 'Only the latest 10 successful analyses are kept. Older records and stored images are removed automatically.')}</p>
