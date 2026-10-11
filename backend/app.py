@@ -2,9 +2,11 @@
 from __future__ import annotations
 
 import io
+import os
 import logging
 import warnings
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from dotenv import load_dotenv
 load_dotenv(Path(__file__).with_name('.env'))
@@ -14,9 +16,15 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image, ImageOps, UnidentifiedImageError
 
-from inference_engine import analysis_engine
+if os.getenv('LEAFLENS_BACKEND_MODE', 'local').strip().lower() == 'cloud':
+    from remote_ai_engine import analysis_engine
+else:
+    from inference_engine import analysis_engine
 from recommendations import build_recommendations
-from iot_sensor import router as iot_router, is_configured as iot_is_configured
+if os.getenv('LEAFLENS_BACKEND_MODE', 'local').strip().lower() == 'cloud':
+    from cloud_iot import router as iot_router, is_configured as iot_is_configured
+else:
+    from iot_sensor import router as iot_router, is_configured as iot_is_configured
 from history_store import (
     configured, verified_user as _verified_user, save_analysis, read_history, remove_one, clear_history,
 )
@@ -28,12 +36,27 @@ MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 MAX_PIXELS = 24_000_000
 Image.MAX_IMAGE_PIXELS = MAX_PIXELS
 
+def configured_cors_origins() -> list[str]:
+    """Local development origins plus explicit HTTPS production site origins."""
+    origins = ['http://localhost:5173', 'http://127.0.0.1:5173']
+    for item in os.getenv('LEAFLENS_CORS_ORIGINS', '').split(','):
+        origin = item.strip().rstrip('/')
+        if not origin:
+            continue
+        parsed = urlsplit(origin)
+        if (parsed.scheme != 'https' or not parsed.hostname or parsed.path
+                or parsed.query or parsed.fragment or parsed.username or parsed.password):
+            raise RuntimeError('LEAFLENS_CORS_ORIGINS must contain HTTPS origins only.')
+        origins.append(origin)
+    return list(dict.fromkeys(origins))
+
+
 app = FastAPI(title='LeafLens Real AI Backend', version='0.2.0')
 app.include_router(iot_router)
 app.include_router(admin_router)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=['http://localhost:5173', 'http://127.0.0.1:5173'],
+    allow_origins=configured_cors_origins(),
     allow_methods=['GET', 'POST', 'DELETE'],
     allow_headers=['Content-Type', 'Authorization'],
 )
