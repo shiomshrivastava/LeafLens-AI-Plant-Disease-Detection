@@ -1,0 +1,2 @@
+[functions.leaflens-iot-ingest]
+verify_jwt = false
