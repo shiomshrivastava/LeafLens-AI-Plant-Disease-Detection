@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import io
+import os
 import logging
 import warnings
 from pathlib import Path
@@ -14,7 +15,10 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image, ImageOps, UnidentifiedImageError
 
-from inference_engine import analysis_engine
+if os.getenv('LEAFLENS_BACKEND_MODE', 'local').strip().lower() == 'cloud':
+    from remote_ai_engine import analysis_engine
+else:
+    from inference_engine import analysis_engine
 from recommendations import build_recommendations
 from iot_sensor import router as iot_router, is_configured as iot_is_configured
 from history_store import (
