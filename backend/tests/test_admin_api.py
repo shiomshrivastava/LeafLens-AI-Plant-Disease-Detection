@@ -41,10 +41,15 @@ def test_active_check_denies_banned(monkeypatch):
 
 
 def test_non_admin_denied(monkeypatch):
+    async def verified(_auth):
+        return ADMIN
     async def permitted(_uid):
         return False
     async def active(_uid):
         return None
+    # Stub only the authentication boundary for this test, not the global
+    # history_store module. This remains fully offline and reaches the 403 check.
+    monkeypatch.setattr(a, 'verified_user', verified)
     monkeypatch.setattr(a, '_is_admin', permitted)
     monkeypatch.setattr(a, 'require_active_account', active)
     with pytest.raises(HTTPException) as err:
