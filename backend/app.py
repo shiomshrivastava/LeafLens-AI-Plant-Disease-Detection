@@ -21,7 +21,10 @@ if os.getenv('LEAFLENS_BACKEND_MODE', 'local').strip().lower() == 'cloud':
 else:
     from inference_engine import analysis_engine
 from recommendations import build_recommendations
-from iot_sensor import router as iot_router, is_configured as iot_is_configured
+if os.getenv('LEAFLENS_BACKEND_MODE', 'local').strip().lower() == 'cloud':
+    from cloud_iot import router as iot_router, is_configured as iot_is_configured
+else:
+    from iot_sensor import router as iot_router, is_configured as iot_is_configured
 from history_store import (
     configured, verified_user as _verified_user, save_analysis, read_history, remove_one, clear_history,
 )
