@@ -80,7 +80,7 @@ def test_remote_engine_forwards_only_worker_token(monkeypatch):
     assert report['decision'] == 'HEALTHY'
     assert seen[0][0] == 'https://example.com/internal/analyze'
     assert seen[0][1] == {'X-Worker-Key': 's' * 48}
-    assert seen[0][2]['file'][1].startswith(b'\\x89PNG\\r\\n\\x1a\\n'.decode('unicode_escape').encode('latin1'))
+    assert seen[0][2]['file'][1][:8] == bytes.fromhex('89504e470d0a1a0a')
 
 
 def test_ai_worker_rejects_unauthorized_requests(monkeypatch):
