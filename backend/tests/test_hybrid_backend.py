@@ -104,3 +104,18 @@ def test_ai_worker_accepts_authenticated_inference_offline(monkeypatch):
     assert result.status_code == 200
     assert result.json()['decision'] == 'HEALTHY'
     run.assert_called_once()
+
+
+def test_cors_adds_only_explicit_https_origins(monkeypatch):
+    import app
+    monkeypatch.setenv(
+        'LEAFLENS_CORS_ORIGINS',
+        'https://leaflens-demo.vercel.app, https://preview.example.org/',
+    )
+    origins = app.configured_cors_origins()
+    assert 'http://127.0.0.1:5173' in origins
+    assert 'https://leaflens-demo.vercel.app' in origins
+    assert 'https://preview.example.org' in origins
+    monkeypatch.setenv('LEAFLENS_CORS_ORIGINS', 'http://attacker.example.org')
+    with pytest.raises(RuntimeError, match='HTTPS'):
+        app.configured_cors_origins()
